@@ -1,58 +1,201 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Christocentric Rentals
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel application for [Christocentric Rentals](https://christocentricrentals.com) — a camera and production equipment rental shop based in Kumasi, Ghana. Customers browse gear, build a cart, and checkout with Paystack. Staff manage products, orders, and site content from an admin panel.
 
-## About Laravel
+Built with **Laravel 13**, **PHP 8.3+**, **MySQL**, **Tailwind CSS 4**, and **Vite**.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Features
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Public shop with categories, search, compare, and cart
+- Rental checkout with pickup/return scheduling and Paystack payments (demo mode available)
+- Admin dashboard for products, categories, orders, newsletters, and site settings
+- Product images stored under `public/images/` (WooCommerce uploads + slug-based product files)
+- Catalog can be rebuilt from repo assets — no WordPress static clone required for a fresh install
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Requirements
 
-## Learning Laravel
+- PHP 8.3+
+- Composer
+- Node.js 18+ and npm
+- MySQL 8+ (Laragon, XAMPP, or standalone)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Local setup
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### 1. Clone and install dependencies
 
 ```bash
-composer require laravel/boost --dev
+git clone <repository-url> ChristocentricRentals
+cd ChristocentricRentals
 
-php artisan boost:install
+composer install
+cp .env.example .env   # skip if .env already exists
+php artisan key:generate
+npm install
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Or use the bundled setup script (does not seed the catalog):
 
-## Contributing
+```bash
+composer setup
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 2. Create the database
 
-## Code of Conduct
+Create an empty MySQL database before running migrations:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```sql
+CREATE DATABASE christocentric_rentals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
 
-## Security Vulnerabilities
+In Laragon, you can also create it from HeidiSQL or the MySQL console. Match the name to `DB_DATABASE` in `.env` (default: `christocentric_rentals`).
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 3. Configure environment
+
+Edit `.env` for your machine. At minimum:
+
+| Variable | Purpose |
+|----------|---------|
+| `APP_ENV` | Use `local` for development |
+| `APP_URL` | e.g. `http://christocentricrentals.test` or `http://127.0.0.1:8000` |
+| `DB_*` | MySQL connection |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Initial admin account (created on seed) |
+| `PAYSTACK_*` | Payment keys (leave empty to use demo mode) |
+| `PAYMENT_DEMO_MODE` | `true` skips real Paystack charges locally |
+
+### 4. Migrate and seed the catalog
+
+```bash
+php artisan migrate
+php artisan db:seed
+php artisan catalog:import-images --apply-descriptions
+```
+
+This gives you:
+
+- **14 categories**
+- **~130 products** with images and descriptions
+- **1 admin user** from your `.env` credentials
+
+Product images ship with the repo under `public/images/` (~2,600+ files). The import command reads slug-based filenames from `public/images/storage/products/` and does not need a WordPress export.
+
+### 5. Run the app
+
+**Option A — Laragon virtual host**
+
+Point a vhost at `public/` and open your local URL.
+
+**Option B — Artisan + Vite**
+
+```bash
+composer dev
+```
+
+This starts the PHP server, queue worker, log tail, and Vite dev server together.
+
+Or run them separately:
+
+```bash
+php artisan serve
+npm run dev
+```
+
+For production assets:
+
+```bash
+npm run build
+```
+
+## Admin panel
+
+- URL: `/admin/login`
+- Login uses the account from `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`
+- Manage products, orders, categories, newsletters, subscribers, and site settings
+
+## Project structure (high level)
+
+```
+app/
+  Console/Commands/   # Catalog import, image tools, WordPress export
+  Http/Controllers/   # Shop, checkout, auth, admin
+  Models/             # Product, Order, Category, etc.
+  Support/            # ProductImage, SiteConfig, ProductDescriptions, …
+public/images/        # All site and product images (committed to git)
+  banners/
+  brand/
+  storage/            # WooCommerce uploads (2022–2025) + products/
+config/site.php       # Categories, hero slides, clone path default
+database/seeders/     # Categories + starter products
+```
+
+## Artisan commands
+
+### Catalog (day-to-day)
+
+| Command | Description |
+|---------|-------------|
+| `catalog:import-images` | **Primary import** — build catalog from `public/images/storage/products/` |
+| `catalog:apply-descriptions` | Apply researched descriptions from `ProductDescriptions` |
+| `catalog:export-wordpress` | Export CSV for WooCommerce (does not change Laravel data) |
+
+### Catalog (optional — requires WordPress static clone)
+
+Set `CLONE_PATH` in `.env` to a folder containing `shop/`, `product/`, and `storage/` from the old static site export.
+
+| Command | Description |
+|---------|-------------|
+| `catalog:import-clone` | Import products from clone HTML |
+| `catalog:import-descriptions` | Import descriptions from clone HTML |
+| `assets:sync-clone` | Copy images from clone and fix product paths |
+
+### Images
+
+| Command | Description |
+|---------|-------------|
+| `images:rename-products` | Copy images to `storage/products/{slug}.{ext}` |
+| `images:remove-backgrounds` | Generate transparent cutouts (requires `rembg`) |
+
+## Fresh install checklist
+
+After cloning on a new machine:
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+# Create MySQL database christocentric_rentals
+php artisan migrate
+php artisan db:seed
+php artisan catalog:import-images --apply-descriptions
+npm install && npm run dev
+```
+
+No `CLONE_PATH` is required if you use `catalog:import-images`.
+
+## Payments
+
+- **Paystack** handles checkout when `PAYMENT_DEMO_MODE=false` and keys are set
+- **Demo mode** (`PAYMENT_DEMO_MODE=true`) lets you complete test orders without charging cards
+
+Currency defaults to GHS (`PAYSTACK_CURRENCY=GHS`).
+
+## Troubleshooting
+
+**`composer install` fails on `package:discover` with “Unknown database”**
+
+Create the MySQL database first, then run `composer install` again.
+
+**`APPLICATION IN PRODUCTION` prompt on seed/migrate**
+
+Set `APP_ENV=local` in `.env` for local development.
+
+**Products show placeholder images**
+
+Run `php artisan catalog:import-images` to relink products to files in `public/images/storage/products/`.
+
+**Clone commands say “Clone path not found”**
+
+You can ignore them. Use `catalog:import-images` instead, or set `CLONE_PATH` if you still have the WordPress static export.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT
