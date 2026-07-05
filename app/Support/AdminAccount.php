@@ -4,12 +4,21 @@ namespace App\Support;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 
 class AdminAccount
 {
     public static function ensureExists(): void
     {
+        try {
+            if (! Schema::hasTable('users')) {
+                return;
+            }
+        } catch (\Throwable) {
+            return;
+        }
+
         $email = self::email();
 
         if ($email === '' || self::password() === '') {

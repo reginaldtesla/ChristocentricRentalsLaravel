@@ -9,7 +9,11 @@ class SiteConfig
 {
     public static function boot(): void
     {
-        if (! Schema::hasTable('site_settings')) {
+        try {
+            if (! Schema::hasTable('site_settings')) {
+                return;
+            }
+        } catch (\Throwable) {
             return;
         }
 
@@ -33,7 +37,13 @@ class SiteConfig
      */
     public static function categoriesForNav(): array
     {
-        if (class_exists(\App\Models\Category::class) && Schema::hasTable('categories')) {
+        try {
+            $hasCategoriesTable = class_exists(\App\Models\Category::class) && Schema::hasTable('categories');
+        } catch (\Throwable) {
+            $hasCategoriesTable = false;
+        }
+
+        if ($hasCategoriesTable) {
             $fromDb = \App\Models\Category::query()
                 ->orderBy('sort_order')
                 ->orderBy('name')
