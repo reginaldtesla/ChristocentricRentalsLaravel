@@ -14,55 +14,88 @@ Built with **Laravel 13**, **PHP 8.3+**, **MySQL**, **Tailwind CSS 4**, and **Vi
 
 ## Requirements
 
-- PHP 8.3+
-- Composer
+- PHP 8.3+ with extensions: `mbstring`, `openssl`, `pdo_mysql`, `tokenizer`, `xml`, `ctype`, `json`, `fileinfo`, `gd` or `imagick`
+- Composer 2+
 - Node.js 18+ and npm
 - MySQL 8+ (Laragon, XAMPP, or standalone)
 
-## Local setup
+**Recommended on Windows:** [Laragon](https://laragon.org/) (includes PHP, MySQL, Composer, and Apache/Nginx).
 
-### 1. Clone and install dependencies
+## Installation
+
+Follow these steps on a new machine to get a working local copy with products and images.
+
+### 1. Get the code
 
 ```bash
 git clone <repository-url> ChristocentricRentals
 cd ChristocentricRentals
-
-composer install
-cp .env.example .env   # skip if .env already exists
-php artisan key:generate
-npm install
 ```
 
-Or use the bundled setup script (does not seed the catalog):
+On Laragon, clone into `C:\laragon\www\ChristocentricRentals` so auto-virtual hosts can pick it up.
 
-```bash
-composer setup
-```
+### 2. Create the MySQL database
 
-### 2. Create the database
-
-Create an empty MySQL database before running migrations:
+Create an empty database **before** `composer install` / migrations (Composer’s package discovery may touch the DB):
 
 ```sql
 CREATE DATABASE christocentric_rentals CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-In Laragon, you can also create it from HeidiSQL or the MySQL console. Match the name to `DB_DATABASE` in `.env` (default: `christocentric_rentals`).
+In Laragon: open HeidiSQL or MySQL console, run the statement above. The name must match `DB_DATABASE` in `.env` (default: `christocentric_rentals`).
 
-### 3. Configure environment
+### 3. Install PHP and Node dependencies
 
-Edit `.env` for your machine. At minimum:
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+npm install
+```
 
-| Variable | Purpose |
-|----------|---------|
-| `APP_ENV` | Use `local` for development |
-| `APP_URL` | e.g. `http://christocentricrentals.test` or `http://127.0.0.1:8000` |
-| `DB_*` | MySQL connection |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Initial admin account (created on seed) |
-| `PAYSTACK_*` | Payment keys (leave empty to use demo mode) |
-| `PAYMENT_DEMO_MODE` | `true` skips real Paystack charges locally |
+Shortcut (installs deps, generates key, runs migrations, builds frontend assets — **does not** seed or import the catalog):
 
-### 4. Migrate and seed the catalog
+```bash
+composer setup
+```
+
+If you use `composer setup`, still run the seed and catalog import steps below.
+
+### 4. Configure `.env`
+
+Edit `.env` for your machine. Important values:
+
+| Variable | Example / notes |
+|----------|-----------------|
+| `APP_ENV` | `local` |
+| `APP_DEBUG` | `true` |
+| `APP_URL` | Must match the URL you open in the browser (see below) |
+| `DB_CONNECTION` | `mysql` |
+| `DB_HOST` | `127.0.0.1` |
+| `DB_PORT` | `3306` |
+| `DB_DATABASE` | `christocentric_rentals` |
+| `DB_USERNAME` | `root` (Laragon default) |
+| `DB_PASSWORD` | empty on Laragon by default |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Initial admin login (created on seed) |
+| `PAYMENT_DEMO_MODE` | `true` for local checkout without Paystack |
+| `PAYSTACK_*` | Optional; leave empty in demo mode |
+
+**`APP_URL` must match how you open the site**, or images break. Laravel builds image URLs with `asset()`, which uses `APP_URL`.
+
+| How you run the app | Set `APP_URL` to |
+|---------------------|------------------|
+| Laragon vhost | `http://christocentricrentals.test` |
+| `php artisan serve` | `http://127.0.0.1:8000` |
+
+Do **not** leave `APP_URL` pointing at `https://christocentricrentals.com` while developing locally — product and brand images will 404.
+
+After changing `.env`:
+
+```bash
+php artisan config:clear
+```
+
+### 5. Migrate, seed, and import the catalog
 
 ```bash
 php artisan migrate
@@ -70,46 +103,83 @@ php artisan db:seed
 php artisan catalog:import-images --apply-descriptions
 ```
 
-This gives you:
+This creates:
 
+- Database tables
 - **14 categories**
 - **~130 products** with images and descriptions
-- **1 admin user** from your `.env` credentials
+- **1 admin user** from `ADMIN_EMAIL` / `ADMIN_PASSWORD`
 
-Product images ship with the repo under `public/images/` (~2,600+ files). The import command reads slug-based filenames from `public/images/storage/products/` and does not need a WordPress export.
+Product images ship in the repo under `public/images/` (~2,600+ files). The import reads slug-based files from `public/images/storage/products/` — no WordPress clone or `storage:link` is required for catalog images.
 
-### 5. Run the app
+### 6. Build frontend assets (first time or production)
 
-**Option A — Laragon virtual host**
+```bash
+npm run build
+```
 
-Point a vhost at `public/` and open your local URL.
+For day-to-day CSS/JS development with hot reload, use `npm run dev` instead (see step 7).
 
-**Option B — Artisan + Vite**
+### 7. Run the app
+
+**Option A — Laragon (recommended on Windows)**
+
+1. Start Laragon (Apache/Nginx + MySQL).
+2. Point the site document root at `public/` (Laragon usually does this for `www\ChristocentricRentals`).
+3. Open `http://christocentricrentals.test` (or your configured host).
+4. Confirm `APP_URL` matches that host, then `php artisan config:clear` if you changed it.
+
+**Option B — Artisan + Vite (all-in-one)**
 
 ```bash
 composer dev
 ```
 
-This starts the PHP server, queue worker, log tail, and Vite dev server together.
+Starts the PHP server, queue worker, log tail, and Vite together. Open `http://127.0.0.1:8000` and set `APP_URL` to the same.
 
-Or run them separately:
+**Option C — Separate terminals**
 
 ```bash
 php artisan serve
 npm run dev
 ```
 
-For production assets:
+### 8. Verify install
 
-```bash
-npm run build
-```
+| Check | Expected |
+|-------|----------|
+| Homepage | Hero, logo, and banners load |
+| Shop | Products with real images (not placeholders) |
+| Admin | `/admin/login` with your `ADMIN_*` credentials |
+
+Quick image check: open `/images/brand/logo.png` on your local host — it should return the logo file, not a 404.
 
 ## Admin panel
 
 - URL: `/admin/login`
-- Login uses the account from `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env`
+- Login uses `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`
 - Manage products, orders, categories, newsletters, subscribers, and site settings
+
+## Quick install checklist
+
+Copy-paste sequence after the database exists:
+
+```bash
+git clone <repository-url> ChristocentricRentals
+cd ChristocentricRentals
+composer install
+cp .env.example .env
+php artisan key:generate
+# Edit .env: APP_ENV=local, APP_URL=<your local URL>, DB_* credentials
+php artisan migrate
+php artisan db:seed
+php artisan catalog:import-images --apply-descriptions
+npm install
+npm run build
+# Then: composer dev   OR   open Laragon vhost
+```
+
+No `CLONE_PATH` is required when using `catalog:import-images`.
 
 ## Project structure (high level)
 
@@ -154,23 +224,6 @@ Set `CLONE_PATH` in `.env` to a folder containing `shop/`, `product/`, and `stor
 | `images:rename-products` | Copy images to `storage/products/{slug}.{ext}` |
 | `images:remove-backgrounds` | Generate transparent cutouts (requires `rembg`) |
 
-## Fresh install checklist
-
-After cloning on a new machine:
-
-```bash
-composer install
-cp .env.example .env
-php artisan key:generate
-# Create MySQL database christocentric_rentals
-php artisan migrate
-php artisan db:seed
-php artisan catalog:import-images --apply-descriptions
-npm install && npm run dev
-```
-
-No `CLONE_PATH` is required if you use `catalog:import-images`.
-
 ## Payments
 
 - **Paystack** handles checkout when `PAYMENT_DEMO_MODE=false` and keys are set
@@ -188,9 +241,13 @@ Create the MySQL database first, then run `composer install` again.
 
 Set `APP_ENV=local` in `.env` for local development.
 
+**Logo / product images return 404 or load from the live site**
+
+Set `APP_URL` to your local URL (e.g. `http://christocentricrentals.test`), then run `php artisan config:clear`. Do not use the production domain while developing locally.
+
 **Products show placeholder images**
 
-Run `php artisan catalog:import-images` to relink products to files in `public/images/storage/products/`.
+Run `php artisan catalog:import-images` to relink products to files in `public/images/storage/products/`. Catalog images live under `public/images/` — `php artisan storage:link` is not required for them.
 
 **Clone commands say “Clone path not found”**
 
